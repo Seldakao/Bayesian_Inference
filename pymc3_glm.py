@@ -110,3 +110,65 @@ with Model() as model_sat:
     
 scatter_matrix(trace_to_dataframe(trace_sat), figsize = (12,12))
 
+#%% 
+with Model() as model_sat:
+    grp_mean = Normal('grp_mean', mu = 0, sigma = 10)
+    grp_prec = Gamma('grp_prec', alpha = 1, beta = .1, testval = 1)
+    slope = StudentT.dist(mu = grp_mean, lam = grp_prec, nu = 1)
+    intercept = Normal.dist(mu = sat_data.sat_t.mean(), sigma = sat_data.sat_t.std())
+    GLM.from_formula('sat_t ~ spend + stu_tea_rat + salary + prcnt_take', sat_data,
+                     priors = {'Intercept': intercept, 'Regressor': slope})
+    trace_sat = sample(100, cores = 2)
+    
+scatter_matrix(trace_to_dataframe(trace_sat), figsize = (12,12))
+
+#%%
+tdf_gain = 5 # what is this??
+with Model() as model_sat:
+    grp_mean = Normal('grp_mean', mu=0, sigma=10)
+    grp_prec = Gamma('grp_prec', alpha=1, beta=.1, testval=1.)
+    slope = StudentT.dist(mu=grp_mean, lam=grp_prec, nu=1) #grp_df)
+    intercept = Normal.dist(mu=sat_data.sat_t.mean(), sigma=sat_data.sat_t.std())
+    GLM.from_formula('sat_t ~ spend + stu_tea_rat + salary + prcnt_take', sat_data,
+                priors={'Intercept': intercept, 'Regressor': slope})
+    trace_sat = sample(500, cores = 2)
+    
+scatter_matrix(trace_to_dateframe(trace_sat), figsize = (12, 12))
+# this code does not work, too little samples??
+
+#%%%%%% Logistic Regression
+htwt_data = pd.read_csv(get_data('HtWt.csv'))
+print(htwt_data.head())
+
+m = glm_sm('male ~ height + weight', htwt_data, family = sm.families.Binomial()).fit()
+print(m.summary()) 
+
+with Model() as model_htwt:
+    GLM.from_formula('male ~ height + weight', htwt_data, family = glm.families.Binomial())
+    trace_htwt = sample(100, cores = 2, init = "adapt_diag") # default init with jitter can cause prolem
+trace_df = trace_to_dataframe(trace_htwt)    
+print(trace_df.describe().drop('count').T)
+scatter_mattrix(trace_df, figsize = (8,8))
+print("P(weight < 0) = ", (trace_df['weight'] < 0).mean())
+print("P(height < 0) = ", (trace_df['height'] < 0).mean())
+
+
+#%% Bayesian Logistic Lasso
+lp = Laplace.dist(mu = 0, b = 0.05)
+x_eval = np.linespace(-5, .5, 300)
+plt.plot(x_eval, theano.tensor.exp(lp.logp(x_eval)).eval())
+plt.xlabel('x')
+plt.ylabel('Probability')
+plt.title('Laplace distribution')
+
+with Model() as model_lasso:
+    # Define priors for intercept and regression coefficients
+    priors = { 'Intercept': Normal.dist(mu = 0, sigma = 50),
+              'Regressor': Laplace.dist(mu = 0, b = 0.05)
+            }
+    GLM.from_formula('male ~ height + weight', htwt_data, family = glm.families.Binomail(), priors = priors)
+    trace_lasso = sample(100, cores = 2, init = 'adapt_diag')
+    
+trace_df = trace_to_dataframe(trace_lasso)
+scatter_matrix(trace_df, figsize = (8, 8));
+print(trace_df.describe().drop('count').T)    
