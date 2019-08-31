@@ -148,7 +148,8 @@ with Model() as model_htwt:
     trace_htwt = sample(100, cores = 2, init = "adapt_diag") # default init with jitter can cause prolem
 trace_df = trace_to_dataframe(trace_htwt)    
 print(trace_df.describe().drop('count').T)
-scatter_mattrix(trace_df, figsize = (8,8))
+#%%
+scatter_matrix(trace_df, figsize = (8,8))
 print("P(weight < 0) = ", (trace_df['weight'] < 0).mean())
 print("P(height < 0) = ", (trace_df['height'] < 0).mean())
 
